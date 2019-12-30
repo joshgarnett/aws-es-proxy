@@ -1,23 +1,23 @@
-FROM golang:1.9-alpine
+FROM golang:1.13.4-buster as builder
 
 WORKDIR /go/src/github.com/abutaha/aws-es-proxy
 COPY . .
-
-RUN apk add --update bash curl git && \
-    rm /var/cache/apk/*
 
 RUN mkdir -p $$GOPATH/bin && \
     curl https://glide.sh/get | sh
 
 RUN glide install
-RUN CGO_ENABLED=0 GOOS=linux go build -o aws-es-proxy
+RUN go build -o aws-es-proxy
 
-
-FROM alpine:3.7
+FROM debian:buster
 LABEL name="aws-es-proxy" \
       version="latest"
 
-RUN apk --no-cache add ca-certificates
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 WORKDIR /home/
 COPY --from=0 /go/src/github.com/abutaha/aws-es-proxy/aws-es-proxy /usr/local/bin/
 
